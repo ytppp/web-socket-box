@@ -104,7 +104,7 @@ class WebSocketBox {
       this.#reconnectTimer && clearTimeout(this.#reconnectTimer);
       this.connectStatus = ConnectStatus.Connected;
       if (this.isHeartBeat) {
-        this.startHeartBeat();
+        this.pingHeartBeat();
       }
       if (this.openEvent) {
         this.openEvent();
@@ -114,11 +114,11 @@ class WebSocketBox {
   onMessage() {
     this.ws.onmessage = (e) => {
       const msgObj = JSON.parse(e.data);
-      console.log('WebSocket服务收到信息，信息为：', msgObj);
+      console.log('ws服务收到信息，信息为：', msgObj);
       const { type } = msgObj;
       // 判断后端返回的心跳消息
       if (type === this.heartBeatResData.type) {
-        this.startHeartBeat();
+        this.pingHeartBeat();
       }
       if (this.messageEvent) {
         this.messageEvent(e.data);
@@ -155,7 +155,7 @@ class WebSocketBox {
       //
     }
   }
-  // 当WebSocket服务连接出错后,重连
+  // 当ws服务连接出错后,重连
   reconnectWebSocket() {
     if (this.reconnectTimes <= 0) {
       console.log('已超过最大重连次数');
@@ -168,6 +168,7 @@ class WebSocketBox {
       this.init();
     }, this.reconnectRate);
   }
+  // 关闭ws服务
   close() {
     if (this.ws) {
       console.log('手动关闭ws服务');
@@ -178,7 +179,7 @@ class WebSocketBox {
   getConnectStatus() {
     return this.connectStatus;
   }
-  startHeartBeat() {
+  pingHeartBeat() {
     this.#heartBeatTimer && clearTimeout(this.#heartBeatTimer);
     this.#serverTimeoutTimer && clearTimeout(this.#serverTimeoutTimer);
     // 规定时间内没有返回心跳检测信息，重连
