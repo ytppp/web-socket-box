@@ -14,7 +14,9 @@
 <script src='./websocket.js'></script>
 <script>
   new WebSocketBox({
-    wsUrl: ' ws://localhost:6789/ws'
+    wsUrl: ' ws://localhost:6789/ws',
+    isReconnect: false,
+    isHeartBeat: false
   })
 </script>
 

@@ -4,45 +4,46 @@ const ConnectStatus = {
 };
 
 class WebSocketBox {
-  /* webSocket实例 */
+  /* ws实例 */
   ws = null;
 
   /* 连接状态 */
-  connectStatus = '';
+  connectStatus = ConnectStatus.Unconnect;
 
   /* 计时器 */
   // 重连计时器
-  #reConnectTimer = null;
+  #reconnectTimer = null;
   // 心跳检测计时器
-  #heartCheckTimer = null;
+  #heartBeatTimer = null;
   // 心跳检测服务器超时计时器
   #serverTimeoutTimer = null;
 
   /* 参数 */
-  // ws的URL地址
+  // ws地址
   wsUrl = '';
-  // 是否在WebSocket服务连接出错后执行重连
-  isReConnect = true;
-  // 重连次数，默认4次
-  reConnectTimes = 4;
-  // 重连频率，默认2秒执行一次重连
-  reConnectRate = 2000;
+  // 是否在ws服务连接出错后执行重连
+  isReconnect = true;
+  // 重连次数
+  reconnectTimes = 4;
+  // 重连频率，规定多久执行一次重连 单位：微秒
+  reconnectRate = 5000;
   // 是否进行心跳检测
-  isHeartCheck = true;
-  // 心跳检测频率，默认3秒执行一次
-  heartCheckRate = 3000;
+  isHeartBeat = true;
+  // 心跳检测频率，规定多久秒执行一次心跳检测 单位：微秒
+  heartBeatRate = 3000;
   // 心跳检测超时次数，客户端向服务器发送规定次数心跳检测，服务端都没有回复则判定为失去连接
-  heartCheckTimes = 4;
-  // 心跳检测超时时间，规定时间内服务端没有回复则判定为失去连接
-  heartCheckResTimeOut = 30000;
+  // heartBeatTimes = 4;
+  // 心跳检测超时时间，规定时间内客户端没有收到回复则判定为失去连接 单位：微秒
+  heartBeatResTimeOut = 10000;
   // 向后端发送的心跳检测数据
   heartBeatReqData = {
-    type: 'heart_check',
+    type: 'heart_beat',
   };
   // 后端返回的心跳检测数据
   heartBeatResData = {
-    type: 'heart_check',
+    type: 'heart_beat',
   };
+  /* 自定义钩子事件 */
   // 连接
   openEvent = null;
   // 收到信息
@@ -64,13 +65,13 @@ class WebSocketBox {
     this.wsUrl = params.wsUrl;
     // 非必传参数
     const paramsArr = [
-      'isReConnect',
-      'reConnectTimes',
-      'reConnectRate',
-      'isHeartCheck',
-      'heartCheckRate',
-      'heartCheckTimes',
-      'heartCheckResTimeOut',
+      'isReconnect',
+      'reconnectTimes',
+      'reconnectRate',
+      'isHeartBeat',
+      'heartBeatRate',
+      'heartBeatTimes',
+      'heartBeatResTimeOut',
       'heartBeatReqData',
       'heartBeatResData',
       'openEvent',
@@ -83,7 +84,7 @@ class WebSocketBox {
         this[key] = params[key];
       }
     });
-    this.reConnectTimesOld = this.reConnectTimes;
+    this.reconnectTimesInit = this.reconnectTimes;
     this.init();
   }
   init() {
@@ -97,16 +98,13 @@ class WebSocketBox {
   }
   onOpen() {
     this.ws.onopen = () => {
-      console.log('WebSocket服务已经连接');
+      console.log('ws服务已经连接');
       // 连接成功后，重置重连参数
-      this.reConnectTimes = this.reConnectTimesOld;
-      if (this.#reConnectTimer) {
-        clearTimeout(this.#reConnectTimer);
-        this.#reConnectTimer = null;
-      }
+      this.reconnectTimes = this.reconnectTimesInit;
+      this.#reconnectTimer && clearTimeout(this.#reconnectTimer);
       this.connectStatus = ConnectStatus.Connected;
-      if (this.isHeartCheck) {
-        this.startHeartCheck();
+      if (this.isHeartBeat) {
+        this.startHeartBeat();
       }
       if (this.openEvent) {
         this.openEvent();
@@ -118,9 +116,9 @@ class WebSocketBox {
       const msgObj = JSON.parse(e.data);
       console.log('WebSocket服务收到信息，信息为：', msgObj);
       const { type } = msgObj;
-      // todo 判断后端返回的心跳消息
+      // 判断后端返回的心跳消息
       if (type === this.heartBeatResData.type) {
-        this.startHeartCheck();
+        this.startHeartBeat();
       }
       if (this.messageEvent) {
         this.messageEvent(e.data);
@@ -128,11 +126,12 @@ class WebSocketBox {
     };
   }
   onError() {
-    this.ws.onerror = () => {
-      console.log(`WebSocket服务连接出错,即将开始重新连接...`);
+    this.ws.onerror = (e) => {
+      console.log(`ws服务连接出错`);
       this.connectStatus = ConnectStatus.Unconnect;
-      if (this.isReConnect) {
-        this.reConnectWebSocket();
+      if (this.isReconnect) {
+        console.log(`即将重新连接...`);
+        this.reconnectWebSocket();
       }
       if (this.errorEvent) {
         this.errorEvent();
@@ -141,7 +140,7 @@ class WebSocketBox {
   }
   onClose() {
     this.ws.onclose = () => {
-      console.log('WebSocket服务关闭');
+      console.log('ws服务关闭');
       this.connectStatus = ConnectStatus.Unconnect;
       if (this.closeEvent) {
         this.closeEvent();
@@ -157,41 +156,43 @@ class WebSocketBox {
     }
   }
   // 当WebSocket服务连接出错后,重连
-  reConnectWebSocket() {
-    console.log(
-      '正在重新连接WebSocket服务，当前剩余连接次数',
-      this.reConnectTimes - 1
-    );
-    // 如果重连计时器存在，清除重连定时器
-    this.#reConnectTimer = setTimeout(() => {
-      if (this.reConnectTimes <= 1) {
-        //关闭定时器
-        clearInterval(this.#reConnectTimer);
-      } else {
-        this.reConnectTimes--;
-        this.init();
-      }
-    }, this.reConnectRate);
+  reconnectWebSocket() {
+    if (this.reconnectTimes <= 0) {
+      console.log('已超过最大重连次数');
+      console.log('重连ws服务失败，请检查参数是否配置正确或服务端是否开启');
+      return;
+    }
+    this.#reconnectTimer = setTimeout(() => {
+      this.reconnectTimes--;
+      console.log('正在重新连接ws服务，剩余重连次数：', this.reconnectTimes);
+      this.init();
+    }, this.reconnectRate);
   }
   close() {
-    console.log('手动关闭websocket服务');
-    this.ws.close();
-    this.ws = null;
+    if (this.ws) {
+      console.log('手动关闭ws服务');
+      this.ws.close();
+      this.ws = null;
+    }
   }
   getConnectStatus() {
     return this.connectStatus;
   }
-  startHeartCheck() {
-    console.log('发送心跳检测');
-    this.#heartCheckTimer && clearTimeout(this.#heartCheckTimer);
+  startHeartBeat() {
+    this.#heartBeatTimer && clearTimeout(this.#heartBeatTimer);
     this.#serverTimeoutTimer && clearTimeout(this.#serverTimeoutTimer);
-    this.#heartCheckTimer = setTimeout(() => {
+    // 规定时间内没有返回心跳检测信息，重连
+    this.#heartBeatTimer = setTimeout(() => {
       this.sendData(this.heartBeatReqData);
-      // 规定时间内没有返回心跳检测信息，关闭连接
+      // 规定时间内没有返回心跳检测信息，重连
       this.#serverTimeoutTimer = setTimeout(() => {
-        console.log('规定时间内没有返回心跳检测信息,即将开始重新连接...');
-        this.reConnectWebSocket();
-      }, this.heartCheckResTimeOut);
-    }, this.heartCheckRate);
+        console.log(
+          `${
+            this.heartBeatResTimeOut / 1000
+          }秒内没有返回心跳检测信息,即将开始重新连接...`
+        );
+        this.reconnectWebSocket();
+      }, this.heartBeatResTimeOut);
+    }, this.heartBeatRate);
   }
 }
