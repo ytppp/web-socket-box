@@ -29,10 +29,8 @@ class WebSocketBox {
   reconnectRate = 5000;
   // 是否进行心跳检测
   isHeartBeat = true;
-  // 心跳检测频率，规定多久秒执行一次心跳检测 单位：微秒
+  // 心跳检测频率，规定多久执行一次心跳检测 单位：微秒
   heartBeatRate = 3000;
-  // 心跳检测超时次数，客户端向服务器发送规定次数心跳检测，服务端都没有回复则判定为失去连接
-  // heartBeatTimes = 4;
   // 心跳检测超时时间，规定时间内客户端没有收到回复则判定为失去连接 单位：微秒
   heartBeatResTimeOut = 10000;
   // 向后端发送的心跳检测数据
@@ -70,7 +68,6 @@ class WebSocketBox {
       'reconnectRate',
       'isHeartBeat',
       'heartBeatRate',
-      'heartBeatTimes',
       'heartBeatResTimeOut',
       'heartBeatReqData',
       'heartBeatResData',
