@@ -56,8 +56,8 @@ class WebSocketBox {
    */
   constructor(params) {
     // 必传参数
-    if (!params.hasOwnProperty('wsUrl')) {
-      console.log('wsUrl is required');
+    if (!params || !params.wsUrl) {
+      console.error('wsUrl is required');
       return;
     }
     this.wsUrl = params.wsUrl;
