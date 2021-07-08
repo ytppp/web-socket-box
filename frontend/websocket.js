@@ -25,13 +25,13 @@ class WebSocketBox {
   isReconnect = true;
   // 重连次数
   reconnectTimes = 4;
-  // 重连频率，规定多久执行一次重连 单位：微秒
+  // 重连频率，规定多久执行一次重连 单位：毫秒
   reconnectRate = 5000;
   // 是否进行心跳检测
   isHeartBeat = true;
-  // 心跳检测频率，规定多久执行一次心跳检测 单位：微秒
+  // 心跳检测频率，规定多久执行一次心跳检测 单位：毫秒
   heartBeatRate = 3000;
-  // 心跳检测超时时间，规定时间内客户端没有收到回复则判定为失去连接 单位：微秒
+  // 心跳检测超时时间，规定时间内客户端没有收到回复则判定为失去连接 单位：毫秒
   heartBeatResTimeOut = 10000;
   // 向后端发送的心跳检测数据
   heartBeatReqData = {
@@ -179,7 +179,6 @@ class WebSocketBox {
   pingHeartBeat() {
     this.#heartBeatTimer && clearTimeout(this.#heartBeatTimer);
     this.#serverTimeoutTimer && clearTimeout(this.#serverTimeoutTimer);
-    // 规定时间内没有返回心跳检测信息，重连
     this.#heartBeatTimer = setTimeout(() => {
       this.sendData(this.heartBeatReqData);
       // 规定时间内没有返回心跳检测信息，重连
@@ -187,7 +186,7 @@ class WebSocketBox {
         console.log(
           `${
             this.heartBeatResTimeOut / 1000
-          }秒内没有返回心跳检测信息,即将开始重新连接...`
+          }秒内没有返回心跳检测信息，即将开始重新连接...`
         );
         this.reconnectWebSocket();
       }, this.heartBeatResTimeOut);

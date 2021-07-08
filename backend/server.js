@@ -16,7 +16,10 @@ class MockWebSocket {
         if (data.type === 'heart_beat') {
           socket.send(
             JSON.stringify({
-              type: 'heart_beat',
+              type:
+                Number(Math.random().toFixed(2)) * 100 > 25
+                  ? 'heart_beat'
+                  : 'unknown heart_beat',
             })
           );
         }
