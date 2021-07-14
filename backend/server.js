@@ -13,13 +13,16 @@ class MockWebSocket {
       socket.on('message', function (message) {
         console.log(`client send a message: ${message}`);
         let data = JSON.parse(message);
-        if (data.type === 'heart_beat') {
+        if (data.type === 'ping') {
           socket.send(
+            // {
+            //   type:
+            //     Number(Math.random().toFixed(2)) * 100 > 25
+            //       ? 'pong'
+            //       : 'error pong',
+            // }
             JSON.stringify({
-              type:
-                Number(Math.random().toFixed(2)) * 100 > 25
-                  ? 'heart_beat'
-                  : 'unknown heart_beat',
+              type: 'pong',
             })
           );
         }
