@@ -13,7 +13,8 @@
 <script src='./websocket.js'></script>
 <script>
   new WebSocketBox({
-    wsUrl: 'ws://localhost:6789/ws'
+    wsUrl: 'ws://localhost:6789/ws',
+    reconnectTimes: 3,
   })
 </script>
 
