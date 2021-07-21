@@ -109,7 +109,7 @@ class WebSocketBox {
     this.onError();
     this.onClose();
   }
-  onOpen() {
+  onOpen(func) {
     this.ws.onopen = () => {
       console.log('ws服务已经连接');
       // 连接成功后，重置重连参数
@@ -124,9 +124,12 @@ class WebSocketBox {
       if (this.openEvent) {
         this.openEvent();
       }
+      if (func) {
+        func();
+      }
     };
   }
-  onMessage() {
+  onMessage(func) {
     this.ws.onmessage = (e) => {
       const msgObj = JSON.parse(e.data);
       console.log('ws服务收到信息，信息为：', msgObj);
@@ -138,9 +141,12 @@ class WebSocketBox {
       if (this.messageEvent) {
         this.messageEvent(e.data);
       }
+      if (func) {
+        func();
+      }
     };
   }
-  onError() {
+  onError(func) {
     this.ws.onerror = (e) => {
       e.preventDefault();
       console.log(`ws服务连接出错`);
@@ -155,9 +161,12 @@ class WebSocketBox {
       if (this.errorEvent) {
         this.errorEvent();
       }
+      if (func) {
+        func();
+      }
     };
   }
-  onClose() {
+  onClose(func) {
     this.ws.onclose = () => {
       console.log('ws服务关闭');
       this.connectStatus = ConnectStatus.Unconnect;
@@ -165,13 +174,16 @@ class WebSocketBox {
         this.closeEvent();
       }
     };
+    if (func) {
+      func();
+    }
   }
   sendData(data) {
     const dataStr = JSON.stringify(data);
     try {
       this.ws.send(dataStr);
-    } catch {
-      //
+    } catch (e) {
+      console.log('发送数据除错：' + e);
     }
   }
   // 当ws服务连接出错后,重连
