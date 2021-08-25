@@ -1,4 +1,3 @@
-import bus from '@/utils/bus';
 const ConnectStatus = {
   Unconnect: 'unconnected',
   Connected: 'connected',
@@ -7,42 +6,42 @@ const CheckType = {
   times: 'times',
   timeout: 'timeout',
 };
+const objectAssign = (...args) => {
+  return Object.assign({}, ...args);
+};
 
-export default class WebSocketBox {
-  constructor(wsUrl, params = null) {
-    const defaultOpts = {
-      reconnectOpts: {
-        // 是否在ws服务连接出错（即onError或断连）后重连
-        enable: true,
-        // 重连次数
-        times: 3,
-        // 重连频率，即多久执行一次重连 单位：毫秒
-        reconnectRate: 5000,
+class WebSocketBox {
+  constructor(wsUrl, options) {
+    const reconnectOptsDefault = {
+      // 是否在ws服务连接出错（即onError或断连）后重连
+      enable: true,
+      // 重连次数
+      times: 3,
+      // 重连频率，即多久执行一次重连 单位：毫秒
+      reconnectRate: 5000,
+    };
+    const heartBeatOptsDefault = {
+      // 是否启用心跳检测
+      enable: true,
+      // 心跳频率，即多久执行一次心跳检测 单位：毫秒
+      rate: 5000,
+      // 检测心跳断连方式，'times'指通过次数判断，'timeout'指通过超时判断
+      checkType: CheckType.times,
+      // 心跳检测超时次数，规定次数内客户端连续没有收到回复则判定为断连，当通过次数判断断连时使用
+      times: 3,
+      // 心跳检测超时时间 单位：毫秒
+      // 当通过超时判断断连时，超时时间内客户端没有收到回复则判定为断连
+      // 当通过次数判断断连时，超时时间内客户端没有收到回复，心跳检测超时次数减1次，心跳检测超时次数为0时仍没有收到回复则判定为断连
+      timeout: 10000,
+      // 向后端发送的心跳检测数据
+      reqObj: {
+        type: 'ping',
       },
-      heartBeatOpts: {
-        // 是否启用心跳检测
-        enable: true,
-        // 心跳频率，即多久执行一次心跳检测 单位：毫秒
-        rate: 5000,
-        // 检测心跳断连方式，'times'指通过次数判断，'timeout'指通过超时判断
-        checkType: CheckType.times,
-        // 心跳检测超时次数，规定次数内客户端连续没有收到回复则判定为断连，当通过次数判断断连时使用
-        times: 3,
-        // 心跳检测超时时间 单位：毫秒
-        // 当通过超时判断断连时，超时时间内客户端没有收到回复则判定为断连
-        // 当通过次数判断断连时，超时时间内客户端没有收到回复，心跳检测超时次数减1次，心跳检测超时次数为0时仍没有收到回复则判定为断连
-        timeout: 10000,
-        // 向后端发送的心跳检测数据
-        reqObj: {
-          type: 'ping',
-        },
-        // 后端返回的心跳检测数据
-        resObj: {
-          type: 'pong',
-        },
+      // 后端返回的心跳检测数据
+      resObj: {
+        type: 'pong',
       },
     };
-    let opts = {};
     /* ws实例 */
     this.ws = null;
     /* 连接状态 */
@@ -54,19 +53,13 @@ export default class WebSocketBox {
     this.heartBeatTimer = null;
     // 心跳检测服务器超时计时器
     this.serverTimeoutTimer = null;
-
     if (!wsUrl) {
       console.error('wsUrl is required');
       return;
     }
     this.wsUrl = wsUrl;
-    if (params) {
-      opts = Object.assign({}, defaultOpts, params);
-    }
-
-    Object.keys(opts).forEach((key) => {
-      this[key] = params[key];
-    });
+    this.reconnectOpts = objectAssign(reconnectOptsDefault, options.reconnect);
+    this.heartBeatOpts = objectAssign(heartBeatOptsDefault, options.heartBeat);
     this.initReconnectTimes = this.reconnectOpts.times;
     this.initHeartBeatRateTimes = this.heartBeatOpts.times;
     if (this.heartBeatOpts.checkType === CheckType.times) {
@@ -93,7 +86,6 @@ export default class WebSocketBox {
         clearTimeout(this.reconnectTimer);
         this.reconnectTimer = null;
       }
-
       this.connectStatus = ConnectStatus.Connected;
       if (this.heartBeatOpts.enable) {
         this.initReconnectTimes = this.reconnectOpts.times;
@@ -108,7 +100,7 @@ export default class WebSocketBox {
       const { type } = msgObj;
       this.pingHeartBeat();
       if (this.heartBeatOpts.resObj.type !== type) {
-        bus.$emit('wsMsg', msgObj);
+        // 抛出数据
       }
     };
   }
